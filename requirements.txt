@@ -1,0 +1,9 @@
+# Editable install preferred: pip install -e .
+# Or: pip install -r requirements.txt
+
+gradio>=4.0
+numpy>=1.24
+pillow>=10.0
+scikit-image>=0.21
+scipy>=1.10
+trimesh[easy]>=4.0

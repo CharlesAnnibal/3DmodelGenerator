@@ -1,0 +1,30 @@
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+**/*.egg-info/
+build/
+dist/
+
+# Outputs & large files
+output/*
+!output/.gitkeep
+weights/*
+!weights/.gitkeep
+
+# ML artifacts (keep out of git unless you use Git LFS)
+*.ckpt
+*.safetensors
+*.onnx
+*.zip
+*.zip
+*.ckpt
+*.safetensors
+*.onnx
+
+# IDE
+.idea/
+.vscode/
