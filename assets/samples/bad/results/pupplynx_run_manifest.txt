@@ -1,3 +1,0 @@
-engine: model-generator 0.1.2
-app_defaults: max_resolution=64 plane_scale=1 gray_depth=0 hull_rounding=0.35
-hull_only: hull_rounding=0 hull_gray_depth=0 (binary hull, no sculpt field)
