@@ -12,3 +12,4 @@ Arena / Unity game specs are in [`_specs/arena/index.md`](arena/index.md).
 | MGC-4 | Scale Normalization / Sizing | done | [spec](MGC-4-sizing.md) | [plan](../_plans/MGC-4-sizing.md) |
 | MGC-5 | Acceptance Test Suite | done | [spec](MGC-5-acceptance-test.md) | [plan](../_plans/MGC-5-acceptance-test.md) |
 | MGC-8 | FBX Export & Rig Manifest | done | [spec](MGC-8-fbx-export.md) | [plan](../_plans/MGC-8-fbx-export.md) |
+| MGC-9 | README Update | done | [spec](MGC-9-flexible-input-views.md) | — |

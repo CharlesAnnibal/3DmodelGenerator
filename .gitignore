@@ -13,6 +13,9 @@ null
 *.safetensors
 *.onnx
 
+input/*
+output/*
+
 .idea/
 .vscode/
 
