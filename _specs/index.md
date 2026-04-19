@@ -13,4 +13,5 @@ Arena / Unity game specs are in [`_specs/arena/index.md`](arena/index.md).
 | MGC-5 | Acceptance Test Suite | done | [spec](MGC-5-acceptance-test.md) | [plan](../_plans/MGC-5-acceptance-test.md) |
 | MGC-8 | FBX Export & Rig Manifest | done | [spec](MGC-8-fbx-export.md) | [plan](../_plans/MGC-8-fbx-export.md) |
 | MGC-9 | README Update | done | [spec](MGC-9-flexible-input-views.md) | [plan](../_plans/MGC-9-readme-update.md) |
-| MGC-10 | Per-Creature Config File | draft | [spec](MGC-10-per-creature-config.md) | — |
+| MGC-10 | Per-Creature Config File | done | [spec](MGC-10-per-creature-config.md) | [plan](../_plans/MGC-10-per-creature-config.md) |
+| MGC-11 | Bone Placement Bug (All Bones at Head) | done | [spec](MGC-11-bone-placement-bug.md) | [plan](../_plans/MGC-11-bone-placement-bug.md) |

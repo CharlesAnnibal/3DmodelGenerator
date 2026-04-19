@@ -69,25 +69,6 @@ def _read_creature_config(folder: Path) -> dict:
         raise SystemExit("config.yaml found but PyYAML is not installed. Run: pip install pyyaml")
 
 
-def _resolve_height_for_creature(args: argparse.Namespace, config: dict) -> float:
-    """Resolve target height: CLI flag > config.yaml > default (1.0 m)."""
-    cli = _resolve_target_height(args)
-    if cli is not None:
-        return cli
-    if "height" in config:
-        v = str(config["height"]).strip().lower()
-        if v in _HEIGHT_PRESETS:
-            return _HEIGHT_PRESETS[v]
-        try:
-            return float(v)
-        except ValueError:
-            raise SystemExit(
-                f"config.yaml: invalid height value {config['height']!r}. "
-                f"Use a number or one of {list(_HEIGHT_PRESETS)}."
-            )
-    return _HEIGHT_PRESETS["medium"]
-
-
 PRESETS: dict[str, dict[str, object]] = {
     "Hunyuan3D-2 (quality)": {
         "steps": 20,
@@ -106,6 +87,90 @@ PRESETS: dict[str, dict[str, object]] = {
     },
 }
 
+_PARAM_DEFAULTS: dict[str, object] = {
+    "preset": "Hunyuan3D-2 (quality)",
+    "steps": 40,
+    "seed": 12345,
+    "texture_size": 2048,
+    "rig_profile": "auto",
+}
+
+_VALID_CONFIG_KEYS = frozenset({"height", "preset", "steps", "seed", "texture_size", "rig_profile"})
+_VALID_RIG_PROFILES = frozenset({"auto", "humanoid", "quadruped", "serpentine"})
+_VALID_TEXTURE_SIZES = frozenset({512, 1024, 2048, 4096})
+
+
+def _resolve_creature_params(args: argparse.Namespace, config: dict) -> dict:
+    """Resolve all per-creature pipeline params: CLI flag > config.yaml > default."""
+    unknown = set(config) - _VALID_CONFIG_KEYS
+    if unknown:
+        raise SystemExit(f"config.yaml: unknown key(s): {sorted(unknown)}. "
+                         f"Valid keys: {sorted(_VALID_CONFIG_KEYS)}")
+
+    def _pick(cli_val, config_key: str):
+        if cli_val is not None:
+            return cli_val
+        if config_key in config:
+            return config[config_key]
+        return _PARAM_DEFAULTS[config_key]
+
+    preset = _pick(args.preset, "preset")
+    if preset not in PRESETS:
+        raise SystemExit(f"config.yaml: invalid preset {preset!r}. "
+                         f"Valid: {list(PRESETS)}")
+
+    try:
+        steps = int(_pick(args.steps, "steps"))
+    except (TypeError, ValueError):
+        raise SystemExit(f"config.yaml: invalid steps value {config.get('steps')!r}")
+
+    try:
+        seed = int(_pick(args.seed, "seed"))
+    except (TypeError, ValueError):
+        raise SystemExit(f"config.yaml: invalid seed value {config.get('seed')!r}")
+
+    try:
+        texture_size = int(_pick(args.texture_size, "texture_size"))
+    except (TypeError, ValueError):
+        raise SystemExit(f"config.yaml: invalid texture_size value {config.get('texture_size')!r}")
+    if texture_size not in _VALID_TEXTURE_SIZES:
+        raise SystemExit(f"config.yaml: invalid texture_size {texture_size}. "
+                         f"Valid: {sorted(_VALID_TEXTURE_SIZES)}")
+
+    rig_profile = str(_pick(args.rig_profile, "rig_profile"))
+    if rig_profile not in _VALID_RIG_PROFILES:
+        raise SystemExit(f"config.yaml: invalid rig_profile {rig_profile!r}. "
+                         f"Valid: {sorted(_VALID_RIG_PROFILES)}")
+
+    # Height uses the existing resolver that handles presets + floats.
+    cli_height = _resolve_target_height(args)
+    if cli_height is not None:
+        target_height = cli_height
+    elif "height" in config:
+        v = str(config["height"]).strip().lower()
+        if v in _HEIGHT_PRESETS:
+            target_height = _HEIGHT_PRESETS[v]
+        else:
+            try:
+                target_height = float(v)
+            except ValueError:
+                raise SystemExit(
+                    f"config.yaml: invalid height value {config['height']!r}. "
+                    f"Use a number or one of {list(_HEIGHT_PRESETS)}."
+                )
+    else:
+        target_height = _HEIGHT_PRESETS["medium"]
+
+    return {
+        "preset": preset,
+        "steps": steps,
+        "seed": seed,
+        "texture_size": texture_size,
+        "rig_profile": rig_profile,
+        "target_height": target_height,
+    }
+
+
 # Supported reference-image view names and file extensions.
 _VIEW_NAMES = ("front", "back", "side", "left", "right")
 _IMAGE_EXTS = (".png", ".jpg", ".jpeg", ".webp")
@@ -121,23 +186,23 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--output-dir", type=Path, default=Path("./output"))
     parser.add_argument(
         "--preset",
-        default="Hunyuan3D-2 (quality)",
+        default=None,
         choices=list(PRESETS),
     )
-    parser.add_argument("--steps", type=int, default=40)
+    parser.add_argument("--steps", type=int, default=None)
     parser.add_argument("--octree-resolution", type=int, default=260)
     parser.add_argument("--num-chunks", type=int, default=20000)
-    parser.add_argument("--seed", type=int, default=12345)
+    parser.add_argument("--seed", type=int, default=None)
     parser.add_argument(
         "--texture-size",
         type=int,
-        default=2048,
+        default=None,
         choices=[512, 1024, 2048, 4096],
         help="Albedo texture resolution. Must be a power of two. Default: 2048.",
     )
     parser.add_argument(
         "--rig-profile",
-        default="auto",
+        default=None,
         choices=["auto", "humanoid", "quadruped", "serpentine"],
     )
     parser.add_argument("--no-rembg", action="store_true")
@@ -239,24 +304,25 @@ def main(argv: list[str] | None = None) -> None:
             continue
 
         config = _read_creature_config(folder)
+        params = _resolve_creature_params(args, config)
         begin_creature(name)
         try:
             process_creature(
                 name,
                 images,
                 output_dir,
-                preset=args.preset,
-                steps=args.steps,
+                preset=params["preset"],
+                steps=params["steps"],
                 octree_resolution=args.octree_resolution,
                 num_chunks=args.num_chunks,
-                seed=args.seed,
-                texture_size=args.texture_size,
-                rig_profile=args.rig_profile,
+                seed=params["seed"],
+                texture_size=params["texture_size"],
+                rig_profile=params["rig_profile"],
                 use_rembg=not args.no_rembg,
                 with_texture=not args.no_texture,
                 fix_legs=not args.no_fix_legs,
                 auto_rig=not args.no_rig,
-                target_height=_resolve_height_for_creature(args, config),
+                target_height=params["target_height"],
                 run_acceptance=not args.no_acceptance,
                 strict_acceptance=args.strict,
                 export_fbx=not args.no_fbx,

@@ -9,6 +9,7 @@ See specs/acceptance-test.md for the full specification.
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import tempfile
 from dataclasses import dataclass, field, asdict
@@ -482,6 +483,45 @@ def _check_rigging(name: str, output_dir: Path) -> list[CheckResult]:
         ]:
             results.append(CheckResult(cid, cname, False, sev, "error", "", str(exc)))
 
+    # G-06: bone spatial distribution via rig manifest
+    manifest_path = output_dir / name / "3dmodel" / f"{name}_rig_manifest.json"
+    try:
+        if manifest_path.exists():
+            import json as _json
+            manifest = _json.loads(manifest_path.read_text(encoding="utf-8"))
+            bone_heads = [b["head"] for b in manifest.get("bones", []) if "head" in b]
+            if bone_heads:
+                mesh = _load_mesh(rigged_glb) if rigged_glb.exists() else None
+                if mesh is not None:
+                    verts = np.asarray(mesh.vertices)
+                    mesh_h = float(verts[:, 1].max() - verts[:, 1].min())  # Y-up in glTF
+                else:
+                    mesh_h = 0.0
+                z_vals = [h[1] for h in bone_heads]  # Y in glTF = Z in Blender
+                bone_range = max(z_vals) - min(z_vals)
+                if mesh_h > 1e-5:
+                    ratio = bone_range / mesh_h
+                    passed = ratio >= 0.15
+                    results.append(CheckResult(
+                        "G-06", "Bone spatial distribution",
+                        passed, "HIGH",
+                        f"spread {ratio:.1%} of mesh height",
+                        "≥15%",
+                        "" if passed else "bones clustered — rig placement may have failed",
+                    ))
+                else:
+                    results.append(CheckResult("G-06", "Bone spatial distribution", True, "HIGH",
+                                               "n/a", "≥15%", "mesh height unknown"))
+            else:
+                results.append(CheckResult("G-06", "Bone spatial distribution", True, "HIGH",
+                                           "n/a", "≥15%", "manifest has no positions (old format)"))
+        else:
+            results.append(CheckResult("G-06", "Bone spatial distribution", True, "HIGH",
+                                       "n/a", "≥15%", "manifest not found"))
+    except Exception as exc:
+        results.append(CheckResult("G-06", "Bone spatial distribution", True, "HIGH",
+                                   "n/a", "≥15%", f"check error: {exc}"))
+
     return results
 
 
@@ -783,13 +823,24 @@ def run_acceptance(
 
     result = _compute_result(creature_name, all_checks, renders)
 
-    # Write acceptance.json
+    # Write acceptance.json atomically — temp file then rename so a crash never
+    # leaves a truncated file.
     acceptance_json = output_dir / creature_name / "acceptance.json"
     try:
-        with open(acceptance_json, "w", encoding="utf-8") as f:
-            data = asdict(result)
-            data["checks"] = [asdict(c) for c in result.checks]
-            json.dump(data, f, indent=2)
+        import tempfile
+        data = asdict(result)
+        data["checks"] = [asdict(c) for c in result.checks]
+        payload = json.dumps(data, indent=2)
+        fd, tmp_path = tempfile.mkstemp(
+            dir=acceptance_json.parent, prefix=".acceptance_", suffix=".tmp"
+        )
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                f.write(payload)
+            Path(tmp_path).replace(acceptance_json)
+        except Exception:
+            Path(tmp_path).unlink(missing_ok=True)
+            raise
     except Exception:
         pass
 

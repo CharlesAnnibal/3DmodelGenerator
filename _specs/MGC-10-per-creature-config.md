@@ -1,5 +1,5 @@
 ---
-status: draft
+status: done
 ---
 
 # MGC-10 — Per-Creature Config File
@@ -10,18 +10,18 @@ All pipeline flags are global — every creature in a batch run gets the same he
 
 ## Goal
 
-Allow a `config.json` file inside each creature folder to override any pipeline flag for that creature only. Global CLI flags remain the default for creatures without a config.
+Allow a `config.yaml` file inside each creature folder to override any pipeline flag for that creature only. Global CLI flags remain the default for creatures without a config.
 
 ## Deliverables
 
-1. `config.json` spec — supported keys and their defaults
+1. `config.yaml` spec — supported keys and their defaults
 2. `_detect_config(folder)` helper in `__main__.py` that reads and validates the file
 3. Per-creature config merged over global args before `process_creature()` is called
 4. `README.md` and `_specs/general.md` updated with config file documentation
 
 ## Config file format
 
-`input/{name}/config.json`:
+`input/{name}/config.yaml`:
 
 ```json
 {
@@ -49,7 +49,7 @@ All keys are optional. Any key absent falls back to the CLI flag (or its default
 ## Scope
 
 ### In scope
-- Reading `config.json` from the creature input folder
+- Reading `config.yaml` from the creature input folder
 - Merging config over global CLI args (config wins)
 - Validation with a clear error message on unknown keys or bad values
 - Height preset names (`"big"`, `"huge"`, etc.) resolved the same way as `--height`
@@ -60,8 +60,8 @@ All keys are optional. Any key absent falls back to the CLI flag (or its default
 
 ## Acceptance criteria
 
-- [ ] `input/1-pupplynx/config.json` with `{"height": "small"}` produces a 0.3 m model when running the full batch
-- [ ] Creature without `config.json` uses the global CLI flag value unchanged
-- [ ] Unknown key in `config.json` exits with a clear error naming the invalid key
+- [ ] `input/1-pupplynx/config.yaml` with `{"height": "small"}` produces a 0.3 m model when running the full batch
+- [ ] Creature without `config.yaml` uses the global CLI flag value unchanged
+- [ ] Unknown key in `config.yaml` exits with a clear error naming the invalid key
 - [ ] Invalid value (e.g. `"height": "enormous"`) exits with a clear error
-- [ ] `config.json` keys are documented in README input structure section
+- [ ] `config.yaml` keys are documented in README input structure section
