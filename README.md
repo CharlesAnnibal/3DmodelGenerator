@@ -28,6 +28,13 @@ input/
     side.png        optional (aliased to left)
     left.png        optional
     right.png       optional
+    config.yaml     optional — per-creature settings
+```
+
+`config.yaml` supports a `height` key (preset name or metres). CLI flags take precedence over config.
+
+```yaml
+height: big       # or small / medium / huge / 1.8
 ```
 
 Supported formats: `.png`, `.jpg`, `.jpeg`, `.webp`
@@ -38,6 +45,60 @@ Supported formats: `.png`, `.jpg`, `.jpeg`, `.webp`
 > A 3/4 view works well as a single image — just name it `front.png` with no other views present.
 
 > **Do not** use front+back as the only two views — the multiview model will invent extra limbs. Use front+left/right, or all four views.
+
+## Image input guidance
+
+### Single image (recommended starting point)
+
+Use one image named `front.png`. The pipeline uses `Hunyuan3D-2` (single-image model), which handles any angle.
+
+**Best single-image choices, ranked:**
+
+| View | Quality | Notes |
+|---|---|---|
+| 3/4 front-left or front-right | **Best** | Most depth information in one image — face + body side visible simultaneously. Hunyuan3D infers back geometry from the silhouette. |
+| Front (strict 90°) | Good | Clean symmetry, but the model must guess depth entirely. Works well for stocky/round creatures. |
+| Side (strict 90°) | Acceptable | Good depth cues, but face detail is lost. Use only if the creature's side profile is its defining feature. |
+
+```
+input/
+  my-creature/
+    front.png    ← your single image (any angle)
+```
+
+### Three orthographic views (better geometry)
+
+Use `front.png` + `back.png` + `side.png` (or `left.png`). The pipeline uses `Hunyuan3D-2mv` (multiview model), which resolves ambiguous geometry from multiple angles.
+
+**Requirements:**
+- Images must be true 90° orthographic views — straight front, straight back, strict side-on
+- All three images should match in style, scale, and lighting
+- A 3/4 or perspective image mixed into an orthographic set will distort the geometry
+
+**What works:**
+
+| Set | Result |
+|---|---|
+| `front` + `left` + `back` | Full geometry coverage — best multiview result |
+| `front` + `right` + `back` | Same as above, mirrored |
+| `front` + `left` | Good — back is inferred; avoids the front+back trap |
+
+**What does not work:**
+
+| Set | Problem |
+|---|---|
+| `front` + `back` only | **Rejected** — the model invents extra limbs. Use front+left/right instead. |
+| Orthographic + 3/4 mixed | Geometry distortion — the MV model expects all views at true 90° increments |
+
+### Choosing between single-image and three-view
+
+| Situation | Recommendation |
+|---|---|
+| You have a good 3/4 illustration | Single image (`front.png`) |
+| You have a character sheet with precise 90° views | Three views |
+| Your side view is actually 3/4 (not strict 90°) | Single image — don't mix it into a multiview set |
+| Fast iteration / testing a new creature | Single image |
+| Final production quality | Three views if you can produce true orthographics |
 
 ## Output structure
 

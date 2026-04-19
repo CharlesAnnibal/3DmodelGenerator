@@ -31,8 +31,8 @@ _HEIGHT_PRESETS: dict[str, float] = {
 }
 
 
-def _resolve_target_height(args: argparse.Namespace) -> float:
-    """Return the target height in metres from CLI flags."""
+def _resolve_target_height(args: argparse.Namespace) -> float | None:
+    """Return the target height in metres from CLI flags, or None if not set."""
     if args.height is not None:
         v = args.height.strip().lower()
         if v in _HEIGHT_PRESETS:
@@ -50,6 +50,41 @@ def _resolve_target_height(args: argparse.Namespace) -> float:
         return _HEIGHT_PRESETS["big"]
     if args.small:
         return _HEIGHT_PRESETS["small"]
+    return None
+
+
+def _read_creature_config(folder: Path) -> dict:
+    """Read config.yaml from a creature folder, returning an empty dict if absent."""
+    config_path = folder / "config.yaml"
+    if not config_path.is_file():
+        return {}
+    try:
+        import yaml
+        with config_path.open("r", encoding="utf-8") as f:
+            data = yaml.safe_load(f) or {}
+        if not isinstance(data, dict):
+            raise SystemExit(f"{config_path}: expected a YAML mapping, got {type(data).__name__}")
+        return data
+    except ImportError:
+        raise SystemExit("config.yaml found but PyYAML is not installed. Run: pip install pyyaml")
+
+
+def _resolve_height_for_creature(args: argparse.Namespace, config: dict) -> float:
+    """Resolve target height: CLI flag > config.yaml > default (1.0 m)."""
+    cli = _resolve_target_height(args)
+    if cli is not None:
+        return cli
+    if "height" in config:
+        v = str(config["height"]).strip().lower()
+        if v in _HEIGHT_PRESETS:
+            return _HEIGHT_PRESETS[v]
+        try:
+            return float(v)
+        except ValueError:
+            raise SystemExit(
+                f"config.yaml: invalid height value {config['height']!r}. "
+                f"Use a number or one of {list(_HEIGHT_PRESETS)}."
+            )
     return _HEIGHT_PRESETS["medium"]
 
 
@@ -203,6 +238,7 @@ def main(argv: list[str] | None = None) -> None:
             bar.update(1)
             continue
 
+        config = _read_creature_config(folder)
         begin_creature(name)
         try:
             process_creature(
@@ -220,7 +256,7 @@ def main(argv: list[str] | None = None) -> None:
                 with_texture=not args.no_texture,
                 fix_legs=not args.no_fix_legs,
                 auto_rig=not args.no_rig,
-                target_height=_resolve_target_height(args),
+                target_height=_resolve_height_for_creature(args, config),
                 run_acceptance=not args.no_acceptance,
                 strict_acceptance=args.strict,
                 export_fbx=not args.no_fbx,
