@@ -271,12 +271,19 @@ def process_creature(
     run_acceptance: bool = True,
     strict_acceptance: bool = False,
     export_fbx: bool = True,
+    texture_images: dict[str, Path] | None = None,
 ) -> None:
     """Generate a 3D model for a single creature.
 
     *images* maps view names (``front``, ``back``, ``left``, ``right``) to
-    image file paths.  Outputs are written into
-    ``output_dir / name / {3dmodel, textures}/``.
+    image file paths used for shape generation.
+
+    *texture_images* is an optional wider set of images used only for texture
+    baking — useful when shape was generated from a single 3/4 image but
+    back/side references are available for better coverage.  Falls back to
+    *images* when not provided.
+
+    Outputs are written into ``output_dir / name / {3dmodel, textures}/``.
     """
     import torch
 
@@ -465,17 +472,24 @@ def process_creature(
                 """Strip background then crop tight to creature content."""
                 return _crop_to_content(_white_bg_to_alpha(img))
 
+            # texture_images may include extra views (back, side) even when
+            # shape was generated from a single image.
+            tex_source: dict[str, PILImage.Image] = {}
+            _tex_paths = texture_images if texture_images else images
+            for _vname, _vpath in _tex_paths.items():
+                tex_source[_vname] = PILImage.open(_vpath).convert("RGBA")
+
             tex_images: dict[str, PILImage.Image] = {}
-            if "front" in original_views:
-                tex_images["front"] = _prep_tex(original_views["front"])
-            if "back" in original_views:
-                tex_images["back"] = _prep_tex(original_views["back"])
-            for side_key in ("left", "right"):
-                if side_key in original_views:
-                    tex_images["side"] = _prep_tex(original_views[side_key])
+            if "front" in tex_source:
+                tex_images["front"] = _prep_tex(tex_source["front"])
+            if "back" in tex_source:
+                tex_images["back"] = _prep_tex(tex_source["back"])
+            for side_key in ("left", "right", "side"):
+                if side_key in tex_source:
+                    tex_images["side"] = _prep_tex(tex_source[side_key])
                     break
             if not tex_images:
-                tex_images["front"] = _prep_tex(next(iter(original_views.values())))
+                tex_images["front"] = _prep_tex(next(iter(tex_source.values())))
 
             # Sample average creature colour as base coat for surfaces that
             # face none of the orthographic projection cameras.

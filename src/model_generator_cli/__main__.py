@@ -256,6 +256,26 @@ def _detect_images(folder: Path) -> dict[str, Path]:
     return images
 
 
+def _detect_texture_images(folder: Path) -> dict[str, Path]:
+    """Map view name -> image path for texture baking, casting a wider net.
+
+    Matches any image file whose stem *contains* a view keyword
+    (e.g. ``front_processed.png``, ``back_v2.webp``).  Used to supply
+    extra coverage views for texture baking when shape generation ran in
+    single-image mode.
+    """
+    found: dict[str, Path] = {}
+    for path in folder.iterdir():
+        if path.suffix.lower() not in _IMAGE_EXTS:
+            continue
+        stem = path.stem.lower()
+        for view in _VIEW_NAMES:
+            if view in stem and view not in found:
+                found[view] = path
+                break
+    return found
+
+
 def _mark_images_processed(images: dict[str, Path]) -> None:
     """Rename source images with '_processed' suffix to prevent accidental re-runs."""
     for view_name, image_path in images.items():
@@ -305,6 +325,7 @@ def main(argv: list[str] | None = None) -> None:
 
         config = _read_creature_config(folder)
         params = _resolve_creature_params(args, config)
+        texture_imgs = _detect_texture_images(folder)
         begin_creature(name)
         try:
             process_creature(
@@ -326,6 +347,7 @@ def main(argv: list[str] | None = None) -> None:
                 run_acceptance=not args.no_acceptance,
                 strict_acceptance=args.strict,
                 export_fbx=not args.no_fbx,
+                texture_images=texture_imgs if texture_imgs else None,
             )
             _mark_images_processed(images)
             success(name, "Done")
