@@ -15,3 +15,4 @@ Arena / Unity game specs are in [`_specs/arena/index.md`](arena/index.md).
 | MGC-9 | README Update | done | [spec](MGC-9-flexible-input-views.md) | [plan](../_plans/MGC-9-readme-update.md) |
 | MGC-10 | Per-Creature Config File | done | [spec](MGC-10-per-creature-config.md) | [plan](../_plans/MGC-10-per-creature-config.md) |
 | MGC-11 | Bone Placement Bug (All Bones at Head) | done | [spec](MGC-11-bone-placement-bug.md) | [plan](../_plans/MGC-11-bone-placement-bug.md) |
+| MGC-12 | Folder Reorganization & Artifact Cleanup | planned | [spec](MGC-12-folder-reorganization.md) | |

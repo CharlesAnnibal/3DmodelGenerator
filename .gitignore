@@ -88,3 +88,6 @@ dmypy.json
 
 # Cython debug symbols
 cython_debug/
+
+# Generated creature models (2.7GB) — live in Aurarena, not git
+models/

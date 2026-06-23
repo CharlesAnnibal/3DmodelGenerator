@@ -33,22 +33,25 @@ from pathlib import Path
 # Argument parsing
 # ---------------------------------------------------------------------------
 
-def _parse_args() -> tuple[Path, Path, int, int]:
+def _parse_args() -> tuple[Path, Path, int, int, bool]:
     try:
         idx = sys.argv.index("--")
         argv = sys.argv[idx + 1:]
     except ValueError:
         raise SystemExit(
             "Usage: blender --background --python render_views_blender.py -- "
-            "<input_glb> <output_dir> [width] [height]"
+            "<input_glb> <output_dir> [width] [height] [--unlit]"
         )
-    if len(argv) < 2:
+    flags = [a for a in argv if a.startswith("--")]
+    positional = [a for a in argv if not a.startswith("--")]
+    if len(positional) < 2:
         raise SystemExit("Need at least: input_glb output_dir")
-    input_glb = Path(argv[0]).resolve()
-    output_dir = Path(argv[1]).resolve()
-    width = int(argv[2]) if len(argv) > 2 else 256
-    height = int(argv[3]) if len(argv) > 3 else 256
-    return input_glb, output_dir, width, height
+    input_glb = Path(positional[0]).resolve()
+    output_dir = Path(positional[1]).resolve()
+    width = int(positional[2]) if len(positional) > 2 else 256
+    height = int(positional[3]) if len(positional) > 3 else 256
+    unlit = "--unlit" in flags
+    return input_glb, output_dir, width, height, unlit
 
 
 # ---------------------------------------------------------------------------
@@ -65,7 +68,7 @@ def _clear_scene() -> None:
         bpy.data.materials.remove(mat)
 
 
-def _import_model(path: Path):
+def _import_model(path: Path, *, unlit: bool = False):
     import bpy
     ext = path.suffix.lower()
     if ext in (".glb", ".gltf"):
@@ -77,7 +80,85 @@ def _import_model(path: Path):
     meshes = [o for o in bpy.context.scene.objects if o.type == "MESH"]
     if not meshes:
         raise RuntimeError("No mesh objects after import")
+    if unlit:
+        _convert_to_unlit(meshes)
+    else:
+        _force_basecolor_srgb(meshes)
     return meshes
+
+
+def _convert_to_unlit(meshes) -> None:
+    """Replace every Principled BSDF with an Emission shader fed by the base-color
+    image. Use Non-Color colorspace so PNG bytes pass through without gamma
+    correction; combined with view_transform='Raw' this gives pixel-faithful
+    rendering — required for UV-position lookup textures."""
+    import bpy
+    seen: set[str] = set()
+    for obj in meshes:
+        for slot in getattr(obj, "material_slots", []):
+            mat = slot.material
+            if mat is None or not mat.use_nodes:
+                continue
+            tree = mat.node_tree
+            principled = next((n for n in tree.nodes if n.type == "BSDF_PRINCIPLED"), None)
+            output = next((n for n in tree.nodes if n.type == "OUTPUT_MATERIAL"), None)
+            if principled is None or output is None:
+                continue
+            base_input = principled.inputs.get("Base Color")
+            tex_node = None
+            if base_input is not None and base_input.is_linked:
+                src = base_input.links[0].from_node
+                if src.type == "TEX_IMAGE" and src.image is not None:
+                    tex_node = src
+            emission = tree.nodes.new("ShaderNodeEmission")
+            emission.inputs["Strength"].default_value = 1.0
+            if tex_node is not None:
+                if tex_node.image.name not in seen:
+                    seen.add(tex_node.image.name)
+                    try:
+                        tex_node.image.colorspace_settings.name = "Non-Color"
+                    except Exception:
+                        pass
+                tree.links.new(tex_node.outputs["Color"], emission.inputs["Color"])
+            else:
+                color = base_input.default_value if base_input else (1, 1, 1, 1)
+                emission.inputs["Color"].default_value = color
+            for link in list(output.inputs["Surface"].links):
+                tree.links.remove(link)
+            tree.links.new(emission.outputs["Emission"], output.inputs["Surface"])
+
+
+def _force_basecolor_srgb(meshes) -> None:
+    """Ensure base-color texture nodes are interpreted as sRGB (not Non-Color).
+
+    glTF importers can leave the base-color image in Linear/Non-Color mode if
+    the source PNG lacked an explicit color profile, which renders the albedo
+    desaturated. Walk every material and force its Principled BSDF base-color
+    image input to sRGB.
+    """
+    seen: set[str] = set()
+    for obj in meshes:
+        for slot in getattr(obj, "material_slots", []):
+            mat = slot.material
+            if mat is None or not mat.use_nodes:
+                continue
+            tree = mat.node_tree
+            principled = next((n for n in tree.nodes if n.type == "BSDF_PRINCIPLED"), None)
+            if principled is None:
+                continue
+            base_input = principled.inputs.get("Base Color")
+            if base_input is None or not base_input.is_linked:
+                continue
+            src = base_input.links[0].from_node
+            if src.type != "TEX_IMAGE" or src.image is None:
+                continue
+            if src.image.name in seen:
+                continue
+            seen.add(src.image.name)
+            try:
+                src.image.colorspace_settings.name = "sRGB"
+            except Exception:
+                pass
 
 
 def _world_bbox(objects):
@@ -169,17 +250,37 @@ def _setup_eevee(width: int, height: int) -> None:
 
 
 def _add_world_lighting() -> None:
-    """Add a simple grey world light so textures are visible."""
+    """Bright world ambient + 3-point key/fill/rim lights for clear PBR rendering."""
     import bpy
+    from mathutils import Vector
+
     world = bpy.data.worlds.get("AcceptanceWorld")
     if world is None:
         world = bpy.data.worlds.new("AcceptanceWorld")
     world.use_nodes = True
     bg = world.node_tree.nodes.get("Background")
     if bg:
-        bg.inputs["Color"].default_value = (0.5, 0.5, 0.5, 1.0)
+        bg.inputs["Color"].default_value = (1.0, 1.0, 1.0, 1.0)
         bg.inputs["Strength"].default_value = 1.0
     bpy.context.scene.world = world
+
+    def _add_sun(name: str, location, energy: float, color=(1.0, 1.0, 1.0)):
+        if name in bpy.data.objects:
+            bpy.data.objects.remove(bpy.data.objects[name], do_unlink=True)
+        light_data = bpy.data.lights.new(name=name, type="SUN")
+        light_data.energy = energy
+        light_data.color = color
+        light_obj = bpy.data.objects.new(name=name, object_data=light_data)
+        bpy.context.collection.objects.link(light_obj)
+        loc = Vector(location)
+        light_obj.location = loc
+        direction = (-loc).normalized()
+        light_obj.rotation_mode = "QUATERNION"
+        light_obj.rotation_quaternion = direction.to_track_quat("-Z", "Y")
+
+    _add_sun("KeyLight",  ( 4.0, -4.0,  6.0), energy=1.0)
+    _add_sun("FillLight", (-5.0, -2.0,  3.0), energy=0.5)
+    _add_sun("RimLight",  ( 0.0,  5.0,  4.0), energy=0.5)
 
 
 # ---------------------------------------------------------------------------
@@ -190,15 +291,15 @@ def main() -> None:
     import bpy
     import numpy as np
 
-    input_glb, output_dir, width, height = _parse_args()
+    input_glb, output_dir, width, height, unlit = _parse_args()
     output_dir.mkdir(parents=True, exist_ok=True)
 
     _clear_scene()
     bpy.ops.wm.read_factory_settings(use_empty=True)
     _clear_scene()
 
-    print(f"[render_views] Importing: {input_glb}")
-    meshes = _import_model(input_glb)
+    print(f"[render_views] Importing: {input_glb}{' (unlit)' if unlit else ''}")
+    meshes = _import_model(input_glb, unlit=unlit)
 
     bbox_min, bbox_max = _world_bbox(meshes)
     center = (bbox_min + bbox_max) * 0.5
@@ -210,15 +311,31 @@ def main() -> None:
     ortho_scale = max_dim * 1.2
 
     _setup_eevee(width, height)
-    _add_world_lighting()
+    if unlit:
+        # Pixel-faithful output: skip lights, set Raw view transform.
+        try:
+            bpy.context.scene.view_settings.view_transform = "Raw"
+        except Exception:
+            pass
+        # Black world so unmapped pixels are clearly distinguishable from UV (0,0).
+        world = bpy.data.worlds.get("AcceptanceWorld") or bpy.data.worlds.new("AcceptanceWorld")
+        world.use_nodes = True
+        bg = world.node_tree.nodes.get("Background")
+        if bg:
+            bg.inputs["Color"].default_value = (0.0, 0.0, 0.0, 1.0)
+            bg.inputs["Strength"].default_value = 0.0
+        bpy.context.scene.world = world
+    else:
+        _add_world_lighting()
 
+    # GLB convention here: front = looking at -Y (azimuth 180°)
     views = [
-        ("front",         0,    0),
-        ("back",        180,    0),
-        ("left",         90,    0),
-        ("right",       270,    0),
+        ("front",       180,    0),
+        ("back",          0,    0),
+        ("left",        270,    0),
+        ("right",        90,    0),
         ("top",           0,   90),
-        ("three_quarter", 45,  30),
+        ("three_quarter", 225, 30),
     ]
 
     for view_name, az, el in views:

@@ -31,7 +31,7 @@
 
 ```
 .\generator run [options]
-python -m model_generator_cli [options]
+python -m model_generator_cli run [options]
 ```
 
 #### Process a single creature
@@ -39,6 +39,14 @@ python -m model_generator_cli [options]
 ```
 .\generator run --creature 3-worcomb
 .\generator run --creature 2-empalynx --height 1.2
+```
+
+#### Clean intermediate artifacts
+
+```
+.\generator clean                        # clean all creatures
+.\generator clean --creature 1-pupplynx  # clean one creature
+.\generator clean --dry-run              # preview without deleting
 ```
 
 #### Size presets
@@ -95,8 +103,7 @@ python -m model_generator_cli [options]
 
 | Flag | Default | Description |
 |---|---|---|
-| `--input-dir` | `./input` | Root directory with creature subfolders |
-| `--output-dir` | `./output` | Root directory for generated output |
+| `--models-dir` | `./models` | Root directory with creature subfolders (images in + outputs out) |
 | `--preset` | `Hunyuan3D-2 (quality)` | Shape generation model preset |
 | `--steps` | `40` | Diffusion sampling steps |
 | `--octree-resolution` | `260` | Mesh extraction detail level |
@@ -119,37 +126,35 @@ python -m model_generator_cli [options]
 
 ---
 
-### Input Structure
+### Directory Structure
+
+Each creature lives entirely under `models/{name}/`:
 
 ```
-input/
+models/
   {name}/
-    front.png          (required — at least one view)
-    back.png           (optional)
-    side.png           (optional, aliased to left)
-    left.png           (optional)
-    right.png          (optional)
-```
-
-Supported formats: `.png`, `.jpg`, `.jpeg`, `.webp`
-
----
-
-### Output Structure
-
-```
-output/
-  {name}/
+    images/
+      front.png          (required — at least one view)
+      back.png           (optional)
+      side.png           (optional, aliased to left)
+      left.png           (optional)
+      right.png          (optional)
+      config.yaml        (optional per-creature overrides)
     3dmodel/
+      {name}_textured_rigged.glb    ← final GLB (textured + rigged)
+      {name}_textured_rigged.fbx    ← final FBX
       {name}.glb                    ← untextured, rigged
-      {name}_textured.glb           ← textured, not rigged
-      {name}_textured_rigged.glb    ← textured + rigged (final deliverable)
+      {name}_rig_manifest.json
     textures/
       {name}.png                    ← baked albedo
     renders/
       front.png, back.png, left.png, right.png, top.png, three_quarter.png
     acceptance.json                 ← quality check results
 ```
+
+Supported image formats: `.png`, `.jpg`, `.jpeg`, `.webp`
+
+Run `.\generator clean` to remove intermediate build artifacts from `3dmodel/`.
 
 ---
 

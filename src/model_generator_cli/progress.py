@@ -127,17 +127,23 @@ class StepTracker:
 
     # -- step transitions ----------------------------------------------------
 
-    def begin_step(self, label: str) -> None:
+    def begin_step(self, label: str) -> float | None:
+        """Record the end of the previous step and start *label*. Returns previous step duration."""
         now = time.time()
+        prev_dur: float | None = None
         if self.current_step_key is not None:
-            dur = now - self.current_step_started_at
-            self.recorded[self.current_step_key] = dur
-            self._record(self.current_step_key, dur)
+            prev_dur = now - self.current_step_started_at
+            self.recorded[self.current_step_key] = prev_dur
+            self._record(self.current_step_key, prev_dur)
 
         self.current_step_label = label
         self.current_step_key = _canonical(label)
         self.current_step_started_at = now
         self._refresh()
+        return prev_dur
+
+    def total_elapsed(self) -> float:
+        return time.time() - self.creature_started_at
 
     def finish(self) -> None:
         self._stop_evt.set()
@@ -207,9 +213,11 @@ def creature_bar(total: int):
 
 def step_status(creature_name: str, step: str) -> None:
     """Print a status line and advance the active creature's inner bar."""
+    prev_dur: float | None = None
     if _active is not None and _active.creature_name == creature_name:
-        _active.begin_step(step)
-    tqdm.write(f"  {_CYAN}[{creature_name}]{_RESET} {step}")
+        prev_dur = _active.begin_step(step)
+    suffix = f"  {_YELLOW}({prev_dur:.1f}s){_RESET}" if prev_dur is not None else ""
+    tqdm.write(f"  {_CYAN}[{creature_name}]{_RESET} {step}{suffix}")
 
 
 def warn(creature_name: str, message: str) -> None:

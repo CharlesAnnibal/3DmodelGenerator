@@ -11,21 +11,37 @@ Model Factory Generator
 Usage: .\generator [command] [options]
 
 Commands:
-  run              Run model-factory with default settings
+  run              Run the generation pipeline on creature folders
+  clean            Remove intermediate/debug artifacts from creature folders
   help             Show this help message
 
 Examples:
   .\generator run
-  .\generator run --creature worcomb
+  .\generator run --creature 1-pupplynx
   .\generator run --preset "Hunyuan3D-2 Turbo (faster)"
+  .\generator clean
+  .\generator clean --creature 1-pupplynx
+  .\generator clean --dry-run
 
-For full options, use: model-factory --help
+For full options, use: model-factory run --help
 "@
 }
 
 switch ($Command) {
     "run" {
-        & python -m model_generator_cli @Args
+        $Python = Join-Path $PSScriptRoot ".venv\Scripts\python.exe"
+        if (-not (Test-Path -LiteralPath $Python)) {
+            $Python = "python"
+        }
+        & $Python -m model_generator_cli run @Args
+        exit $LASTEXITCODE
+    }
+    "clean" {
+        $Python = Join-Path $PSScriptRoot ".venv\Scripts\python.exe"
+        if (-not (Test-Path -LiteralPath $Python)) {
+            $Python = "python"
+        }
+        & $Python -m model_generator_cli clean @Args
         exit $LASTEXITCODE
     }
     "help" {
