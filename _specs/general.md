@@ -37,26 +37,26 @@ python -m model_generator_cli run [options]
 #### Process a single creature
 
 ```
-.\generator run --creature 3-worcomb
-.\generator run --creature 2-empalynx --height 1.2
+.\generator run --creature my-creature
+.\generator run --creature my-creature --height 1.2
 ```
 
 #### Clean intermediate artifacts
 
 ```
 .\generator clean                        # clean all creatures
-.\generator clean --creature 1-pupplynx  # clean one creature
+.\generator clean --creature my-creature  # clean one creature
 .\generator clean --dry-run              # preview without deleting
 ```
 
 #### Size presets
 
 ```
-.\generator run --creature 1-pupplynx --small     # 0.3 m
-.\generator run --creature 1-pupplynx --medium    # 1.0 m (default)
-.\generator run --creature 1-pupplynx --big       # 2.5 m
-.\generator run --creature 1-pupplynx --huge      # 5.0 m
-.\generator run --creature 1-pupplynx --height 0.4  # custom metres
+.\generator run --creature my-creature --small     # 0.3 m
+.\generator run --creature my-creature --medium    # 1.0 m (default)
+.\generator run --creature my-creature --big       # 2.5 m
+.\generator run --creature my-creature --huge      # 5.0 m
+.\generator run --creature my-creature --height 0.4  # custom metres
 ```
 
 #### Quality presets

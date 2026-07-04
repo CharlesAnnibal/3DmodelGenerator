@@ -29,10 +29,10 @@ echo   help             Show this help message
 echo.
 echo Examples:
 echo   generator run
-echo   generator run --creature 1-pupplynx
+echo   generator run --creature my-creature
 echo   generator run --preset "Hunyuan3D-2 Turbo (faster)"
 echo   generator clean
-echo   generator clean --creature 1-pupplynx
+echo   generator clean --creature my-creature
 echo   generator clean --dry-run
 echo.
 echo For full options, use: model-factory run --help

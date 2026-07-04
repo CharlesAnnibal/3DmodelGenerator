@@ -777,7 +777,7 @@ def run_acceptance(
     Parameters
     ----------
     creature_name:
-        The creature folder name (e.g. "1-pupplynx").
+        The creature folder name (e.g. "my-creature").
     output_dir:
         Root output directory (contains ``{creature_name}/`` subfolder).
     reference_images:

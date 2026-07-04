@@ -8,9 +8,9 @@ etc.) without paying the 30-minute cost of a full Hunyuan3D regeneration.
 Usage
 -----
   py -3 test_texture_bake.py
-  py -3 test_texture_bake.py --name 2-empalynx
-  py -3 test_texture_bake.py --glb output/2-empalynx/3dmodel/2-empalynx.glb \\
-                             --input-dir input/2-empalynx
+  py -3 test_texture_bake.py --name my-creature
+  py -3 test_texture_bake.py --glb output/my-creature/3dmodel/my-creature.glb \\
+                             --input-dir input/my-creature
 """
 
 from __future__ import annotations
@@ -180,7 +180,7 @@ def _parse(argv: list[str] | None = None) -> argparse.Namespace:
         prog="test_texture_bake",
         description="Isolated texture-bake smoke test (no Hunyuan3D).",
     )
-    p.add_argument("--name", default="2-empalynx",
+    p.add_argument("--name", default="my-creature",
                    help="Creature name for default input/output paths.")
     p.add_argument("--glb", default=None,
                    help="Source GLB path (default: output/{name}/3dmodel/{name}.glb).")

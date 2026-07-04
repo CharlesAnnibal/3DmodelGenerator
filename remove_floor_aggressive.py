@@ -34,6 +34,6 @@ def process_folder(folder_path):
             print(f"[OK] Saved: {image_path}")
 
 if __name__ == "__main__":
-    folder = r"C:\Users\charl\Projects\Games\modelGeneratorCLI\input\3-worcomb"
+    folder = r"input/my-creature"
     process_folder(folder)
     print("\nDone! Floor removed from all images.")

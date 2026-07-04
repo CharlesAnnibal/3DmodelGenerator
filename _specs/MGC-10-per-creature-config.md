@@ -60,7 +60,7 @@ All keys are optional. Any key absent falls back to the CLI flag (or its default
 
 ## Acceptance criteria
 
-- [ ] `input/1-pupplynx/config.yaml` with `{"height": "small"}` produces a 0.3 m model when running the full batch
+- [ ] `input/my-creature/config.yaml` with `{"height": "small"}` produces a 0.3 m model when running the full batch
 - [ ] Creature without `config.yaml` uses the global CLI flag value unchanged
 - [ ] Unknown key in `config.yaml` exits with a clear error naming the invalid key
 - [ ] Invalid value (e.g. `"height": "enormous"`) exits with a clear error

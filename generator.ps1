@@ -17,10 +17,10 @@ Commands:
 
 Examples:
   .\generator run
-  .\generator run --creature 1-pupplynx
+  .\generator run --creature my-creature
   .\generator run --preset "Hunyuan3D-2 Turbo (faster)"
   .\generator clean
-  .\generator clean --creature 1-pupplynx
+  .\generator clean --creature my-creature
   .\generator clean --dry-run
 
 For full options, use: model-factory run --help

@@ -6,13 +6,13 @@ status: done
 
 ## Bug report
 
-On a worcomb generation, Unity's rig viewer showed all bones clustered at the head instead of distributed throughout the body. The `acceptance.json` for that run has a score of 0.773 and is truncated — the acceptance run crashed mid-check, which is consistent with a broken rig causing downstream code to fail.
+On a my-creature generation, Unity's rig viewer showed all bones clustered at the head instead of distributed throughout the body. The `acceptance.json` for that run has a score of 0.773 and is truncated — the acceptance run crashed mid-check, which is consistent with a broken rig causing downstream code to fail.
 
 Applying animation to a model with misplaced bones will not fix it. Unity's Humanoid retargeting only drives *rotations* around bone positions — if all pivots are at the head, the entire mesh will collapse or explode when animated.
 
 ## Root cause area
 
-`autorig_via_blender()` in `modelGenerator/src/model_generator/blender_tools.py` calls a Blender script that places bones automatically based on the mesh shape. When the mesh silhouette doesn't match the expected body profile (likely worcomb's unusual body shape — stocky, wide, rock-studded), the bone placement heuristic fails to distribute bones along the body axis and defaults everything to a single origin near the head.
+`autorig_via_blender()` in `modelGenerator/src/model_generator/blender_tools.py` calls a Blender script that places bones automatically based on the mesh shape. When the mesh silhouette doesn't match the expected body profile (likely my-creature's unusual body shape — stocky, wide, rock-studded), the bone placement heuristic fails to distribute bones along the body axis and defaults everything to a single origin near the head.
 
 ## Goal
 
@@ -29,14 +29,14 @@ Applying animation to a model with misplaced bones will not fix it. Unity's Huma
 
 | Field | Value |
 |---|---|
-| Creature | `3-worcomb` |
+| Creature | `my-creature` |
 | Acceptance score | 0.773 (FAIL) |
 | `acceptance.json` | Truncated at check M-05 — run crashed |
 | Symptom in Unity | All bones at head; mesh unanimatable |
 
 ## Acceptance criteria
 
-- [ ] Generating worcomb produces bones distributed across the full body
+- [ ] Generating my-creature produces bones distributed across the full body
 - [ ] New acceptance check `R-xx` fails when all bones are within 10% of mesh height from each other
 - [ ] New acceptance check passes on a correctly rigged humanoid and quadruped
 - [ ] `acceptance.json` is always a valid complete JSON file, even when a check throws an exception

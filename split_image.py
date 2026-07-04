@@ -98,8 +98,8 @@ def split_creature_image(image_path, output_dir=None):
         print(f"[OK] Saved: {output_path}")
 
 if __name__ == "__main__":
-    image_path = r"C:\Users\charl\Projects\Games\modelGeneratorCLI\input\3-worcomb\20260407_1026_Image Generation_remix_01knkm75kpegftsfq1qbd33qh2.png"
+    image_path = r"input/my-creature/source.png"
 
     # Split and save to the same folder as input
     split_creature_image(image_path)
-    print("\nDone! Images saved to input/3-worcomb/")
+    print("\nDone! Images saved to input/my-creature/")

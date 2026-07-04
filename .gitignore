@@ -89,5 +89,8 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
-# Generated creature models (2.7GB) — live in Aurarena, not git
+# Generated creature models (2.7GB) — kept out of git
 models/
+
+# runtime timing cache
+.step_times.json

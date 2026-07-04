@@ -188,7 +188,7 @@ Overall PASS = zero CRITICAL failures AND ≤ 2 HIGH failures.
 `output/{name}/acceptance.json`:
 ```json
 {
-  "creature": "1-pupplynx",
+  "creature": "my-creature",
   "passed": true,
   "score": 0.91,
   "checks": [
@@ -196,8 +196,8 @@ Overall PASS = zero CRITICAL failures AND ≤ 2 HIGH failures.
     ...
   ],
   "renders": {
-    "front": "output/1-pupplynx/renders/front.png",
-    "back":  "output/1-pupplynx/renders/back.png",
+    "front": "output/my-creature/renders/front.png",
+    "back":  "output/my-creature/renders/back.png",
     ...
   }
 }

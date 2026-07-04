@@ -113,13 +113,13 @@ height: 1.8       # metres as a float
 
 ```
 input/
-  1-pupplynx/
+  my-creature/
     front.png
     config.yaml     ← height: small
-  2-empalynx/
+  my-creature/
     front.png
     config.yaml     ← height: 1.8
-  3-worcomb/
+  my-creature/
     front.png       ← no config.yaml, uses default (1.0 m)
 ```
 

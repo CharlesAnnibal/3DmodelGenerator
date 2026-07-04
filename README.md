@@ -1,20 +1,74 @@
 # modelGeneratorCLI
 
-Batch CLI pipeline for Hunyuan3D-2 creature model generation. Processes creature folders from `input/` through shape generation, texture baking, leg fixing, and auto-rigging — outputting GLB and FBX models with baked textures.
+Turn creature reference art into game-ready 3D models, in batch, from the command line.
 
-## Prerequisites
+Point it at a folder of creatures — each just an image or two — and it runs the whole
+image-to-asset pipeline: **shape generation** (Hunyuan3D-2) → **background removal** →
+**mesh cleanup & leg-fix** → **texture bake** → **auto-rig** → **GLB + FBX** with a bone
+manifest and validation renders. It was built to mass-produce creatures for a 3D game, but
+it's a standalone tool — the models it produces drop straight into Unity, Blender, or any
+glTF/FBX workflow.
 
-- **modelGenerator** sibling project installed (`pip install -e .` from `../modelGenerator`)
-- **Hunyuan3D-2** cloned into `../modelGenerator/third_party/Hunyuan3D-2`
-- **Blender 3.6+** installed (for texture baking, leg fix, auto-rig, and renders)
-- **Python 3.10+**
+It wraps the bundled **[`modelGenerator`](./modelGenerator)** core (which does the neural
+generation and Blender work) with a batch runner, size/quality presets, and per-creature
+config.
+
+## What you get
+
+For each input creature: a textured, rigged `*.glb` (the deliverable), a rigged `.fbx`
+(e.g. for Mixamo), a bone/hierarchy manifest, a baked albedo texture, and six validation
+renders. See [Output structure](#output-structure).
+
+## Requirements
+
+| Dependency | Version | Needed for |
+|---|---|---|
+| **Python** | 3.10+ | everything |
+| **NVIDIA GPU + CUDA PyTorch** | CUDA 12.x, ~8 GB+ VRAM | shape generation & AI texture paint (CPU works but is slow) |
+| **Blender** | 3.6+ | leg-fix, auto-rig, texture bake, renders |
+| **Git** | any | cloning Hunyuan3D-2 |
+| **Disk** | ~15 GB | model weights + Hunyuan3D-2 checkout |
+
+> Hunyuan3D-2 is downloaded on first run from Hugging Face and needs a working GPU for
+> reasonable speed. Low-VRAM cards can use `--preset "Hunyuan3D-2mini (low VRAM)"`.
+
+### No GPU? (CPU-only mode)
+
+You don't strictly need CUDA. The pipeline **auto-detects** the device — if no CUDA GPU is
+available it falls back to CPU automatically, no flag required. Everything still works and
+produces the same outputs.
+
+> ⚠️ **CPU generation is very slow — budget roughly ~6 hours per creature.** Use it for the
+> occasional one-off or on machines without a GPU; use CUDA for any real batch.
 
 ## Setup
 
+The core lives in [`./modelGenerator`](./modelGenerator) and must be installed first
+(it pulls in Hunyuan3D-2 and CUDA PyTorch). Full details in
+[`modelGenerator/README.md`](./modelGenerator/README.md); the short version:
+
 ```powershell
-cd modelGeneratorCLI
+# 1. core engine + its deps (from ./modelGenerator)
+cd modelGenerator
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -e .
+
+# 2. Hunyuan3D-2 (neural mesh model)
+mkdir third_party; cd third_party
+git clone https://github.com/Tencent-Hunyuan/Hunyuan3D-2.git
+cd ..
+pip install -r third_party/Hunyuan3D-2/requirements.txt
+pip install -e third_party/Hunyuan3D-2
+# CUDA PyTorch (match your CUDA version):
+pip install -r requirements-torch-cuda.txt
+
+# 3. this batch CLI (from the repo root)
+cd ..
 pip install -e .
 ```
+
+Linux/macOS: same steps with a POSIX venv; use `./generate.sh` instead of `.\generator`.
 
 ## Input structure
 
@@ -121,29 +175,36 @@ output/
 
 ## Usage
 
+There are three equivalent ways to invoke it:
+
+- `.\generator run …` — PowerShell wrapper (Windows); also `.\generator clean` / `.\generator help`
+- `./generate.sh run …` — POSIX wrapper (Linux/macOS)
+- `model-factory run …` — the installed console script (any shell)
+- `python -m model_generator_cli run …` — module form
+
+Examples below use `.\generator`; substitute whichever you prefer.
+
 ### Run all creatures
 
 ```powershell
 .\generator run
-# or
-python -m model_generator_cli
 ```
 
 ### Run a single creature
 
 ```powershell
-.\generator run --creature 3-worcomb
-.\generator run --creature 2-empalynx --height 1.2
+.\generator run --creature my-creature
+.\generator run --creature my-creature --height 1.2
 ```
 
 ### Size presets
 
 ```powershell
-.\generator run --creature 1-pupplynx --small      # 0.3 m
-.\generator run --creature 1-pupplynx              # 1.0 m (default)
-.\generator run --creature 1-pupplynx --big        # 2.5 m
-.\generator run --creature 1-pupplynx --huge       # 5.0 m
-.\generator run --creature 1-pupplynx --height 0.4 # custom metres
+.\generator run --creature my-creature --small      # 0.3 m
+.\generator run --creature my-creature              # 1.0 m (default)
+.\generator run --creature my-creature --big        # 2.5 m
+.\generator run --creature my-creature --huge       # 5.0 m
+.\generator run --creature my-creature --height 0.4 # custom metres
 ```
 
 ### Quality presets
@@ -226,3 +287,28 @@ For each creature:
 8. Texture bake (triplanar projection)
 9. Auto-rig textured model → `_textured_rigged.glb` + `.fbx`
 10. Acceptance checks
+
+## Housekeeping
+
+`.\generator clean` removes intermediate/debug artifacts from creature folders
+(add `--creature <name>` to scope it, `--dry-run` to preview).
+
+## Acknowledgements
+
+This tool stands on:
+
+- **[Hunyuan3D-2](https://github.com/Tencent-Hunyuan/Hunyuan3D-2)** — Tencent's image-to-3D
+  neural model (shape + AI paint).
+- **[Blender](https://www.blender.org/)** — mesh cleanup, auto-rig, texture bake, renders.
+- **[rembg](https://github.com/danielgatis/rembg)** — background removal.
+- **PyTorch**, and the wider glTF/FBX tooling ecosystem.
+
+## License
+
+This project's code is released under the **[MIT License](./LICENSE)** — free to use, modify,
+and redistribute, provided the copyright notice is retained.
+
+Note that the pipeline **downloads and runs Hunyuan3D-2**, which is distributed under
+**Tencent's own model license / acceptable-use terms** — review and comply with those
+before any commercial use. Generated assets are subject to the model's terms as well as the
+license of your input images. This project is not affiliated with Tencent.

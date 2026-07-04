@@ -14,7 +14,7 @@ Usage
 -----
   py -3 test_pipeline.py
   py -3 test_pipeline.py --faces 300000 --name my-test
-  py -3 test_pipeline.py --input output/2-empalynx/3dmodel/2-empalynx.glb
+  py -3 test_pipeline.py --input output/my-creature/3dmodel/my-creature.glb
   py -3 test_pipeline.py --no-fix-legs --no-acceptance
 """
 

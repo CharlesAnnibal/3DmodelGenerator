@@ -12,7 +12,7 @@ clustered at a single point. The existing G-05 check ("root bone within mesh bou
 only validates the root bone's Y coordinate, not the full skeleton distribution.
 
 The bone placement logic itself (`_bounds_world` + `_detect_limb_columns`) looks
-correct for standard shapes. The likely failure mode for worcomb: `_detect_limb_columns`
+correct for standard shapes. The likely failure mode for my-creature: `_detect_limb_columns`
 returned < 2 clusters (rocky armor obscures the limb silhouette at the z_cutoff), so
 both legs were placed at the same cx/cy fallback — and the auto-profile detected
 "humanoid" instead of "quadruped", compounding the misplacement.
